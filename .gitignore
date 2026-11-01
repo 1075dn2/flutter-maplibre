@@ -1,0 +1,7 @@
+.dart_tool/
+**/.dart_tool/
+**/build/
+**/.gradle/
+**/.idea/
+**/._*
+**/.DS_Store
