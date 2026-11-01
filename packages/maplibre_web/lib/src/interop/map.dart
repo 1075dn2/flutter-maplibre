@@ -177,6 +177,7 @@ extension type SourceSpecification._(JSObject _) implements JSObject {
     num? maxzoom,
     String? attribution,
     num? buffer,
+    num? tolerance,
     bool? lineMetrics,
   });
 

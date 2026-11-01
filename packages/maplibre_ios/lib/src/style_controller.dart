@@ -174,9 +174,11 @@ class StyleControllerIos extends StyleController {
     final MLNSource ffiSource;
     switch (source) {
       case GeoJsonSource():
-        final options = source.lineMetrics
-            ? ({'lineMetrics': true}.toNSObject() as NSDictionary)
-            : NSDictionary.new$();
+        final options = {
+          if (source.lineMetrics) 'lineMetrics': true,
+          if (source.tolerance case final double tolerance)
+            'MLNShapeSourceOptionSimplificationTolerance': tolerance,
+        }.toNSObject() as NSDictionary;
         final shapeSource = MLNShapeSource.new$();
         if (source.data.trimLeft().startsWith('{')) {
           shapeSource.initWithIdentifier$3(

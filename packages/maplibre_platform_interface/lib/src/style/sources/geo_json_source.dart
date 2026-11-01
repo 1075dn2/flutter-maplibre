@@ -15,6 +15,7 @@ final class GeoJsonSource extends Source {
     required this.data,
     this.maxZoom = 18,
     this.lineMetrics = false,
+    this.tolerance,
     this.attribution,
   });
 
@@ -31,6 +32,12 @@ final class GeoJsonSource extends Source {
   ///
   /// This is required for some dashed-line styles and line progress metrics.
   final bool lineMetrics;
+
+  /// Douglas-Peucker simplification tolerance in source pixels.
+  ///
+  /// Omit to retain the platform default (0.375). Set to zero for a moving
+  /// LineString whose recorded bends must not change as its endpoint advances.
+  final double? tolerance;
 
   /// Contains an attribution to be displayed when the map is shown to a user.
   final String? attribution;

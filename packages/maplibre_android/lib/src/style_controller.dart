@@ -264,6 +264,9 @@ class StyleControllerAndroid extends StyleController {
             ? jni.GeoJsonOptions().withLineMetrics(true)
             : jni.GeoJsonOptions();
         jOptions.releasedBy(arena);
+        if (source.tolerance case final double tolerance) {
+          jOptions.withTolerance(tolerance).releasedBy(arena);
+        }
         final jData = source.data.toJString()..releasedBy(arena);
         if (source.data.trimLeft().startsWith('{')) {
           jSource = jni.GeoJsonSource.new$4(jId, jData, jOptions);
