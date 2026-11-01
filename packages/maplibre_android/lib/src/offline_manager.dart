@@ -6,6 +6,7 @@ import 'package:maplibre_android/src/extensions.dart';
 import 'package:maplibre_android/src/functions.dart';
 import 'package:maplibre_android/src/jni.g.dart' as jni;
 import 'package:maplibre_android/src/offline_region_download.dart';
+import 'package:maplibre_android/src/offline_style_seed.dart';
 import 'package:maplibre_platform_interface/maplibre_platform_interface.dart';
 
 /// MapLibre Android specific implementation of the [OfflineManager].
@@ -272,20 +273,37 @@ class OfflineManagerAndroid implements OfflineManager {
         _downloads.remove(download);
         _releaseIfIdle();
       },
-      create: () => _AndroidDownloadHandle.create((arena, callback) {
-        final definition = jni.OfflineTilePyramidRegionDefinition(
-          mapStyleUrl.toJString()..releasedBy(arena),
-          bounds.toJLatLngBounds(arena: arena),
-          minZoom,
-          maxZoom,
-          pixelDensity,
-        )..releasedBy(arena);
-        _jManager.createOfflineRegion(
-          definition.as(jni.OfflineRegionDefinition.type)..releasedBy(arena),
-          JByteArray.from(metadataBytes)..releasedBy(arena),
-          callback,
-        );
-      }),
+      create: () => createWithOfflineStyleSeed(
+        mapStyleUrl: mapStyleUrl,
+        seed: (bytes) => using((arena) {
+          _jManager.putResourceWithUrl(
+            mapStyleUrl.toJString()..releasedBy(arena),
+            JByteArray.from(bytes)..releasedBy(arena),
+            0,
+            0,
+            null,
+            false,
+          );
+        }),
+        // Android 12.3.1 queues put and create on the same FIFO database
+        // actor. The onCreate callback is our write-completion barrier before
+        // activation, not a guarantee the cache write succeeded. Real native
+        // progress remains required; putResourceWithUrl has no error callback.
+        create: () => _AndroidDownloadHandle.create((arena, callback) {
+          final definition = jni.OfflineTilePyramidRegionDefinition(
+            mapStyleUrl.toJString()..releasedBy(arena),
+            bounds.toJLatLngBounds(arena: arena),
+            minZoom,
+            maxZoom,
+            pixelDensity,
+          )..releasedBy(arena);
+          _jManager.createOfflineRegion(
+            definition.as(jni.OfflineRegionDefinition.type)..releasedBy(arena),
+            JByteArray.from(metadataBytes)..releasedBy(arena),
+            callback,
+          );
+        }),
+      ),
     );
     return download.stream;
   }

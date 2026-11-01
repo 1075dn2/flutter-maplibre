@@ -107,6 +107,11 @@ void main() {
       expect(creates, 1);
       expect(handle.activations, 1);
       expect(events.single.region.metadata, _region.metadata);
+      expect(events.single.loadedBytes, 0);
+      expect(events.single.loadedTiles, 0);
+      expect(events.single.totalTilesEstimated, isTrue);
+      expect(events.single.downloadCompleted, isFalse);
+      expect(finishes, 0); // Synthetic creation progress is not completion.
       await subscription.cancel();
       expect(handle.suspensions, 1);
       expect(handle.releases, 1);
