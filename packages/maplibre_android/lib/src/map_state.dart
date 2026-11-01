@@ -11,6 +11,7 @@ import 'package:maplibre_android/src/extensions.dart';
 import 'package:maplibre_android/src/flutter_api.dart';
 import 'package:maplibre_android/src/functions.dart';
 import 'package:maplibre_android/src/jni.g.dart' as jni;
+import 'package:maplibre_android/src/map_view_lifecycle.dart';
 import 'package:maplibre_android/src/registry.dart';
 import 'package:maplibre_platform_interface/maplibre_platform_interface.dart';
 
@@ -28,7 +29,8 @@ final class MapLibreMapStateAndroid extends MapLibreMapState
   jni.MapLibreMap? _jMap;
   jni.Projection? _cachedJProjection;
   jni.LocationComponent? _cachedJLocationComponent;
-  bool _mapViewStarted = false;
+  final _mapViewLifecycle = MapViewLifecycle();
+  bool _disposed = false;
 
   // JNI holds only a weak callback to avoid keeping a disposed map alive.
   // Keep the bound tear-off alive for this State's lifetime: a WeakReference
@@ -203,6 +205,7 @@ final class MapLibreMapStateAndroid extends MapLibreMapState
   /// This method gets called when the platform view is created. It is not
   /// guaranteed that the map is ready.
   void _onPlatformViewCreated(int viewId) => using((arena) {
+    if (!mounted || _disposed) return;
     _viewId = viewId;
     final jContext = getJContext();
     final cameraBuilder = jni.CameraPosition$Builder()
@@ -237,23 +240,23 @@ final class MapLibreMapStateAndroid extends MapLibreMapState
       ..getMapAsync(jni.OnMapReadyCallback.implement(this));
     _platformView.addView(_mapView);
 
-    // In some environments (notably `integration_test` on Android/CI),
-    // `didChangeAppLifecycleState(AppLifecycleState.resumed)` is not reliably
-    // delivered. MapLibre's `MapView` expects `onStart/onResume` to be called
-    // before certain operations (e.g. projections / feature queries) behave
-    // deterministically.
-    final lifecycleState = WidgetsBinding.instance.lifecycleState;
-    final shouldStartNow =
-        lifecycleState == null || lifecycleState == AppLifecycleState.resumed;
-    if (shouldStartNow && !_mapViewStarted) {
-      _mapView?.onStart();
-      _mapView?.onResume();
-      _mapViewStarted = true;
-    }
+    final mapView = _mapView!;
+    _mapViewLifecycle.attach(
+      start: mapView.onStart,
+      resume: mapView.onResume,
+      pause: mapView.onPause,
+      stop: mapView.onStop,
+      destroy: mapView.onDestroy,
+      state: WidgetsBinding.instance.lifecycleState,
+    );
   });
 
   @override
   void onMapReady(jni.MapLibreMap jMap) => using((arena) {
+    if (!mounted || _disposed) {
+      jMap.release();
+      return;
+    }
     _jMap = jMap
       ..addOnMapClickListener(_mapClickListener)
       ..addOnMapLongClickListener(_mapLongClickListener)
@@ -287,6 +290,7 @@ final class MapLibreMapStateAndroid extends MapLibreMapState
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _disposed = true;
     if (_jMap case final jMap?) {
       jMap.removeOnMapClickListener(_mapClickListener);
       jMap.removeOnMapLongClickListener(_mapLongClickListener);
@@ -309,14 +313,9 @@ final class MapLibreMapStateAndroid extends MapLibreMapState
       _cachedJLocationComponent = null;
       jLocationComponent.release();
     }
+    _mapViewLifecycle.dispose();
     if (_mapView case final mapView?) {
       _mapView = null;
-      if (_mapViewStarted) {
-        mapView.onPause();
-        mapView.onStop();
-        _mapViewStarted = false;
-      }
-      mapView.onDestroy();
       mapView.release();
     }
     super.dispose();
@@ -324,20 +323,9 @@ final class MapLibreMapStateAndroid extends MapLibreMapState
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      // Start MapView only if it was stopped
-      if (!_mapViewStarted) {
-        _mapView?.onStart();
-        _mapViewStarted = true;
-      }
-      _mapView?.onResume();
+    _mapViewLifecycle.update(state);
+    if (state == AppLifecycleState.resumed && !_disposed) {
       _jMap?.triggerRepaint();
-    } else {
-      _mapView?.onPause();
-      if (_mapViewStarted) {
-        _mapView?.onStop();
-        _mapViewStarted = false;
-      }
     }
   }
 
@@ -501,7 +489,7 @@ final class MapLibreMapStateAndroid extends MapLibreMapState
 
   @override
   void onStyleLoaded(jni.Style jStyle) {
-    if (!mounted) {
+    if (!mounted || _disposed) {
       jStyle.release();
       return;
     }
