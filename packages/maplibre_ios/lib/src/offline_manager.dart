@@ -5,6 +5,7 @@ import 'dart:ffi' as ffi;
 import 'package:maplibre_ios/src/extensions.dart';
 import 'package:maplibre_ios/src/maplibre_ffi.g.dart';
 import 'package:maplibre_ios/src/offline_context.dart';
+import 'package:maplibre_ios/src/offline_style_seed.dart';
 import 'package:maplibre_platform_interface/maplibre_platform_interface.dart';
 import 'package:objective_c/objective_c.dart' as objc;
 
@@ -270,6 +271,12 @@ class OfflineManagerIos implements OfflineManager {
     Map<String, Object?> metadata,
   ) async {
     try {
+      // The native offline downloader uses its database/HTTP path, not the
+      // renderer's local-file loader. Preserve the original file URL identity.
+      await seedLocalOfflineStyle(
+        styleUrl: style,
+        seed: (bytes) => _seedStyle(style, bytes),
+      );
       final packs = await _loadPacks();
       if (_disposed || operation.cancelRequested) {
         operation.completeCreation(null);
@@ -355,6 +362,45 @@ class OfflineManagerIos implements OfflineManager {
       operation.completeCreation(null);
       operation.fail(error, stack);
     }
+  }
+
+  Future<void> _seedStyle(String style, List<int> bytes) async {
+    _checkUsable();
+    final styleUrl = style.toNSURL();
+    if (styleUrl == null) {
+      throw const FormatException('Invalid offline style URL.');
+    }
+    final completion = Completer<void>();
+    late final objc.ObjCBlock<ffi.Void Function(objc.NSURL, objc.NSError?)> block;
+    block = ObjCBlock_ffiVoid_NSURL_NSError.listener((url, error) {
+      try {
+        if (!completion.isCompleted) {
+          if (error == null) {
+            completion.complete();
+          } else {
+            completion.completeError(StateError('Offline style preparation failed.'));
+          }
+        }
+      } finally {
+        _pendingBlocks.remove(block);
+        _detachIfIdle();
+      }
+    });
+    _pendingBlocks.add(block);
+    try {
+      _storage.preloadData$1(
+        bytes.toNSData(),
+        forURL: styleUrl,
+        mustRevalidate: false,
+        completionHandler: block,
+      );
+    } catch (_) {
+      _pendingBlocks.remove(block);
+      rethrow;
+    }
+    // Retain the callback even after timeout until native acknowledgement.
+    // A late seed never creates/activates a pack; cancellation is checked above.
+    await completion.future.timeout(const Duration(seconds: 10));
   }
 
   @override
