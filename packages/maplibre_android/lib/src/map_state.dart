@@ -30,6 +30,12 @@ final class MapLibreMapStateAndroid extends MapLibreMapState
   jni.LocationComponent? _cachedJLocationComponent;
   bool _mapViewStarted = false;
 
+  // JNI holds only a weak callback to avoid keeping a disposed map alive.
+  // Keep the bound tear-off alive for this State's lifetime: a WeakReference
+  // to a fresh onStyleLoaded tear-off can be collected even while the State
+  // is still mounted, silently dropping style-ready and all overlay updates.
+  late final void Function(jni.Style) _styleLoadedCallback = onStyleLoaded;
+
   @override
   StyleControllerAndroid? style;
 
@@ -495,6 +501,10 @@ final class MapLibreMapStateAndroid extends MapLibreMapState
 
   @override
   void onStyleLoaded(jni.Style jStyle) {
+    if (!mounted) {
+      jStyle.release();
+      return;
+    }
     // We need to refresh the cached style for when the style reloads.
     style?.dispose();
     final styleCtrl = StyleControllerAndroid._(jStyle);
@@ -817,7 +827,7 @@ final class MapLibreMapStateAndroid extends MapLibreMapState
     _jMap?.setStyle$3(
       builder,
       jni.Style$OnStyleLoaded.implement(
-        _StyleLoadedCallback(WeakReference(onStyleLoaded)),
+        _StyleLoadedCallback(WeakReference(_styleLoadedCallback)),
       )..releasedBy(arena),
     );
   });
