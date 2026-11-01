@@ -12,6 +12,7 @@ export 'src/map_events.dart';
 export 'src/offline/download_progress.dart';
 export 'src/offline/offline_manager.dart';
 export 'src/offline/offline_region.dart';
+export 'src/offline/offline_region_status.dart';
 export 'src/options/map_options.dart';
 export 'src/permission_manager.dart';
 export 'src/platform_interface.dart';

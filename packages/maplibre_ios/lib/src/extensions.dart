@@ -3,6 +3,7 @@ import 'dart:ffi' hide Size;
 
 import 'package:flutter/cupertino.dart';
 import 'package:maplibre_ios/src/maplibre_ffi.g.dart';
+import 'package:maplibre_ios/src/offline_progress.dart';
 import 'package:maplibre_platform_interface/maplibre_platform_interface.dart';
 import 'package:objective_c/objective_c.dart';
 
@@ -104,7 +105,7 @@ extension CGPointExt on CGPoint {
 /// Internal extensions on [NSData].
 extension NSDataExt on NSData {
   /// Convert a [NSData] to a UTF8 [String].
-  String toUTF8String() => String.fromCharCodes(toList());
+  String toUTF8String() => utf8.decode(toList());
 
   /// Convert a [NSData] to a Dart [Map].
   Map<String, Object?> toDartMap() =>
@@ -337,10 +338,12 @@ extension MLNOfflinePackExt on MLNOfflinePack {
         progress.maximumResourcesExpected != progress.countOfResourcesExpected,
     totalTiles: progress.countOfResourcesExpected,
     region: region,
-    downloadCompleted:
-        progress.countOfResourcesCompleted >=
-            progress.countOfResourcesExpected &&
-        progress.countOfResourcesCompleted > 0,
+    downloadCompleted: hasCompleteOfflineResources(
+      nativeComplete: state == MLNOfflinePackState.MLNOfflinePackStateComplete,
+      completedResources: progress.countOfResourcesCompleted,
+      requiredResources: progress.countOfResourcesExpected,
+      maximumRequiredResources: progress.maximumResourcesExpected,
+    ),
   );
 }
 

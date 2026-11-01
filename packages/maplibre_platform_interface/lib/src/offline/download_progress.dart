@@ -20,27 +20,28 @@ class DownloadProgress {
   /// The amount of bytes that are already downloaded.
   final int loadedBytes;
 
-  /// The amount of tiles that are already downloaded.
+  /// The amount of SDK resources already downloaded (not only map tiles).
+  /// The historical field name is preserved for compatibility.
   final int loadedTiles;
 
-  /// The total amount of tiles in this region.
+  /// The total amount of SDK resources in this region (not only map tiles).
   ///
   /// If the precise number of tiles is not known yet, this field gives merely
   /// a lower bound.
   final int totalTiles;
 
-  /// Weather the [totalTiles] value is an estimated or precise value.
+  /// Whether [totalTiles] is estimated rather than precise.
   ///
-  /// It is set to false during early phases of an offline download.
+  /// It is true during early phases of an offline download.
   /// Once style and tile sources have been downloaded, it is possible to
   /// calculate the precise number of required resources, at which point it is
-  /// set to true.
+  /// set to false.
   final bool totalTilesEstimated;
 
   /// The [OfflineRegion] object.
   final OfflineRegion region;
 
-  /// Set to true once the download has completed sucessfully.
+  /// Set to true once the download has completed successfully.
   final bool downloadCompleted;
 
   /// The current progress, returns null if [totalTiles] is unknown.
