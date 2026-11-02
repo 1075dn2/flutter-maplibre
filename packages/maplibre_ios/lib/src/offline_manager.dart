@@ -241,6 +241,7 @@ class OfflineManagerIos implements OfflineManager {
     required double maxZoom,
     required double pixelDensity,
     Map<String, Object?> metadata = const {},
+    BundledGlyphSeeds? bundledGlyphSeeds,
   }) {
     _checkUsable();
     final operation = _IosDownload(this);
@@ -255,6 +256,7 @@ class OfflineManagerIos implements OfflineManager {
           maxZoom,
           pixelDensity,
           metadata,
+          bundledGlyphSeeds,
         ),
       );
     };
@@ -269,6 +271,7 @@ class OfflineManagerIos implements OfflineManager {
     double maxZoom,
     double pixelDensity,
     Map<String, Object?> metadata,
+    BundledGlyphSeeds? bundledGlyphSeeds,
   ) async {
     try {
       // The native offline downloader uses its database/HTTP path, not the
@@ -276,6 +279,9 @@ class OfflineManagerIos implements OfflineManager {
       await seedLocalOfflineStyle(
         styleUrl: style,
         seed: (bytes) => _seedStyle(style, bytes),
+        bundledGlyphSeeds: bundledGlyphSeeds,
+        seedGlyph: _seedStyle,
+        isCanceled: () => _disposed || operation.cancelRequested,
       );
       final packs = await _loadPacks();
       if (_disposed || operation.cancelRequested) {

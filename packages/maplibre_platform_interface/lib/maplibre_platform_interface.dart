@@ -9,6 +9,7 @@ export 'src/lng_lat_bounds.dart';
 export 'src/map_camera.dart';
 export 'src/map_controller.dart';
 export 'src/map_events.dart';
+export 'src/offline/bundled_glyph_seeds.dart';
 export 'src/offline/download_progress.dart';
 export 'src/offline/offline_manager.dart';
 export 'src/offline/offline_region.dart';

@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:maplibre_platform_interface/maplibre_platform_interface.dart';
+
 /// Seeds a local style before enqueueing native region creation.
 ///
 /// Android's offline downloader reads its database, then its network file
@@ -16,12 +18,28 @@ Future<T> createWithOfflineStyleSeed<T>({
   required String mapStyleUrl,
   required void Function(List<int> bytes) seed,
   required Future<T> Function() create,
+  BundledGlyphSeeds? bundledGlyphSeeds,
+  void Function(String url, List<int> bytes)? seedGlyph,
+  bool Function()? isCanceled,
 }) async {
   final uri = Uri.parse(mapStyleUrl);
+  if (bundledGlyphSeeds != null &&
+      (uri.scheme != 'file' || seedGlyph == null)) {
+    throw const FormatException('Bundled glyphs require a local style and seed writer.');
+  }
+  if (isCanceled?.call() ?? false) throw StateError('Download canceled.');
   if (uri.scheme == 'file') {
     final bytes = await File.fromUri(uri).readAsBytes();
     if (bytes.isEmpty) {
       throw const FormatException('The local offline map style is empty.');
+    }
+    if (isCanceled?.call() ?? false) throw StateError('Download canceled.');
+    bundledGlyphSeeds?.validateStyleBytes(bytes);
+    if (bundledGlyphSeeds != null) {
+      for (final entry in bundledGlyphSeeds.resources.entries) {
+        if (isCanceled?.call() ?? false) throw StateError('Download canceled.');
+        seedGlyph!(entry.key, entry.value);
+      }
     }
     seed(bytes);
   }

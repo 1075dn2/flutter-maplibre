@@ -85,5 +85,6 @@ abstract interface class OfflineManager {
     required double maxZoom,
     required double pixelDensity,
     Map<String, Object?> metadata = const {},
+    BundledGlyphSeeds? bundledGlyphSeeds,
   });
 }

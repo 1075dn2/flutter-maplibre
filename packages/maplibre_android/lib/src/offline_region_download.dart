@@ -70,6 +70,9 @@ class OfflineRegionDownload {
   /// Available as soon as native creation finishes.
   int? get regionId => _handle?.region.id;
 
+  /// Preparation must not enqueue more work after cancellation.
+  bool get isCancellationRequested => _stopping || _canceled;
+
   void _start() {
     _started = true;
     _creationTimer = Timer(operationTimeout, () {

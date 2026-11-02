@@ -259,6 +259,7 @@ class OfflineManagerAndroid implements OfflineManager {
     required double maxZoom,
     required double pixelDensity,
     Map<String, Object?> metadata = const {},
+    BundledGlyphSeeds? bundledGlyphSeeds,
   }) {
     _checkOpen();
     // Encode now, so invalid metadata fails without creating a native region.
@@ -275,6 +276,15 @@ class OfflineManagerAndroid implements OfflineManager {
       },
       create: () => createWithOfflineStyleSeed(
         mapStyleUrl: mapStyleUrl,
+        bundledGlyphSeeds: bundledGlyphSeeds,
+        isCanceled: () => _disposed || download.isCancellationRequested,
+        seedGlyph: (url, bytes) => using((arena) {
+          _jManager.putResourceWithUrl(
+            url.toJString()..releasedBy(arena),
+            JByteArray.from(bytes)..releasedBy(arena),
+            0, 0, null, false,
+          );
+        }),
         seed: (bytes) => using((arena) {
           _jManager.putResourceWithUrl(
             mapStyleUrl.toJString()..releasedBy(arena),
