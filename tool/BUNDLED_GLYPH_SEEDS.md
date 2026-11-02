@@ -64,6 +64,10 @@ and adapter together. It verifies every resource before writing. No network.
 
 Python manifest/pin/fixture reproduction passes. Focused Dart tests cover exact
 bytes, immutability, invalid paths/digests/sizes, ordering, mismatch before side
-effects, iOS cancellation and late callback timeout. SDK tests have not yet run
-while another task holds the shared SDK. Native device rendering/durability and
-iOS container relocation remain enablement blockers, not passed tests.
+effects, iOS cancellation and late callback timeout. Focused SDK tests pass: 28 tests across bundled glyph preparation, existing
+style seeding, and native download lifecycle. Targeted Dart analysis of all
+changed production implementations plus the new test reports no issues.
+The formatting tool reports the pre-existing unavailable optional
+`very_good_analysis` package include; no network fetch was attempted. Native
+device rendering/durability and iOS container relocation remain enablement
+blockers, not passed tests.

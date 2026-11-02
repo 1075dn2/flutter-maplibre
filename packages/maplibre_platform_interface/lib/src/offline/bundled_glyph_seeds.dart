@@ -12,7 +12,8 @@ final class BundledGlyphSeeds {
   BundledGlyphSeeds._(this.glyphTemplate, this.resources);
 
   /// Manifest identity compiled into both the app and this adapter.
-  static const manifestSha256 = '49ee46422092cacd26e5520bdf66de6656de1b6b701d5f632e301fdbbc33dd3f';
+  static const manifestSha256 =
+      '49ee46422092cacd26e5520bdf66de6656de1b6b701d5f632e301fdbbc33dd3f';
 
   /// Hard budgets, checked before copying or hashing resource bytes.
   static const maxResourceBytes = 256 * 1024;
@@ -37,18 +38,30 @@ final class BundledGlyphSeeds {
       glyphTemplate.substring(0, glyphTemplate.length - tail.length),
     );
     final segments = root.pathSegments;
-    if (root.scheme != 'file' || root.hasAuthority && root.host.isNotEmpty ||
-        root.userInfo.isNotEmpty || root.hasPort || root.hasQuery ||
-        root.hasFragment || !root.path.startsWith('/') ||
-        !root.path.endsWith('/') || segments.length < 4 ||
+    if (root.scheme != 'file' ||
+        root.hasAuthority && root.host.isNotEmpty ||
+        root.userInfo.isNotEmpty ||
+        root.hasPort ||
+        root.hasQuery ||
+        root.hasFragment ||
+        !root.path.startsWith('/') ||
+        !root.path.endsWith('/') ||
+        segments.length < 4 ||
         segments[segments.length - 3] != 'map-fonts' ||
         segments[segments.length - 2] != 'varela-v1-$manifestSha256' ||
-        segments.any((part) => part == '.' || part == '..' ||
-          part.contains('/') || part.contains('\\') ||
-          part.contains('%') || part.contains('{') || part.contains('}') ||
-          part.runes.any((code) => code < 32 || code == 127)) ||
-        root.toString() != glyphTemplate.substring(
-          0, glyphTemplate.length - tail.length)) {
+        segments.any(
+          (part) =>
+              part == '.' ||
+              part == '..' ||
+              part.contains('/') ||
+              part.contains('\\') ||
+              part.contains('%') ||
+              part.contains('{') ||
+              part.contains('}') ||
+              part.runes.any((code) => code < 32 || code == 127),
+        ) ||
+        root.toString() !=
+            glyphTemplate.substring(0, glyphTemplate.length - tail.length)) {
       throw const FormatException('Invalid bundled glyph installation URL.');
     }
     if (resources.length != _varelaV1.length) {
@@ -59,7 +72,8 @@ final class BundledGlyphSeeds {
     for (final entry in _varelaV1.entries) {
       final url = root.resolveUri(Uri(path: entry.key)).toString();
       final input = resources[url];
-      if (input == null || input.length != entry.value.$1 ||
+      if (input == null ||
+          input.length != entry.value.$1 ||
           input.length > maxResourceBytes ||
           (total += input.length) > maxTotalBytes) {
         throw const FormatException('Invalid bundled glyph resource size.');

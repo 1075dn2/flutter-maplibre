@@ -25,7 +25,9 @@ Future<T> createWithOfflineStyleSeed<T>({
   final uri = Uri.parse(mapStyleUrl);
   if (bundledGlyphSeeds != null &&
       (uri.scheme != 'file' || seedGlyph == null)) {
-    throw const FormatException('Bundled glyphs require a local style and seed writer.');
+    throw const FormatException(
+      'Bundled glyphs require a local style and seed writer.',
+    );
   }
   if (isCanceled?.call() ?? false) throw StateError('Download canceled.');
   if (uri.scheme == 'file') {

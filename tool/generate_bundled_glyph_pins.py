@@ -10,6 +10,7 @@ import base64
 import gzip
 import hashlib
 import json
+import re
 from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -22,7 +23,7 @@ fixture = root / 'packages/maplibre/test/fixtures/varela-v1'
 raw = (args.bundle / 'manifest.json').read_bytes()
 digest = hashlib.sha256(raw).hexdigest()
 code = source.read_text()
-assert f"static const manifestSha256 = '{digest}';" in code, 'Manifest version mismatch: review source pin explicitly first'
+assert re.search(r"static const manifestSha256\s*=\s*'" + digest + r"';", code), 'Manifest version mismatch: review source pin explicitly first'
 manifest = json.loads(raw)
 assert manifest['id'] == 'varela-v1'
 expected = {f'{stack}/{start}-{start+255}.pbf' for stack in ('Varela Round Regular', 'Open Sans Bold') for start in range(0,65536,256)}

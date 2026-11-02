@@ -16,7 +16,9 @@ Future<void> seedLocalOfflineStyle({
   final uri = Uri.parse(styleUrl);
   if (bundledGlyphSeeds != null &&
       (uri.scheme != 'file' || seedGlyph == null)) {
-    throw const FormatException('Bundled glyphs require a local style and seed writer.');
+    throw const FormatException(
+      'Bundled glyphs require a local style and seed writer.',
+    );
   }
   if (uri.scheme != 'file') return;
   final clock = Stopwatch()..start();
