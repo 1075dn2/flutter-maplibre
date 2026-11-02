@@ -119,4 +119,56 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(count, 1);
   });
+  test('Android cancellation and seed errors prevent creation', () async {
+    var count = 0;
+    await expectLater(createWithOfflineStyleSeed<int>(
+      mapStyleUrl: style.uri.toString(), bundledGlyphSeeds: make(),
+      isCanceled: () => count == 1,
+      seedGlyph: (_, __) => count++,
+      seed: (_) => fail('No style insertion'),
+      create: () async => fail('No creation'),
+    ), throwsStateError);
+    expect(count, 1);
+    await expectLater(createWithOfflineStyleSeed<int>(
+      mapStyleUrl: style.uri.toString(), bundledGlyphSeeds: make(),
+      seedGlyph: (_, __) => throw StateError('Native seed failed'),
+      seed: (_) => fail('No style insertion'),
+      create: () async => fail('No creation'),
+    ), throwsStateError);
+  });
+  test('glyph seeds cannot accompany a remote style', () async {
+    await expectLater(createWithOfflineStyleSeed<int>(
+      mapStyleUrl: 'https://example.invalid/style.json',
+      bundledGlyphSeeds: make(), seedGlyph: (_, __) => fail('No insertion'),
+      seed: (_) => fail('No insertion'), create: () async => fail('No creation'),
+    ), throwsFormatException);
+    await expectLater(seedLocalOfflineStyle(
+      styleUrl: 'https://example.invalid/style.json',
+      bundledGlyphSeeds: make(), seedGlyph: (_, __) async => fail('No insertion'),
+      seed: (_) async => fail('No insertion'),
+    ), throwsFormatException);
+  });
+  test('iOS awaits every glyph callback before inserting style', () async {
+    var count = 0;
+    var styleCount = 0;
+    await seedLocalOfflineStyle(
+      styleUrl: style.uri.toString(), bundledGlyphSeeds: make(),
+      seedGlyph: (_, __) async {
+        await Future<void>.delayed(Duration.zero);
+        count++;
+      },
+      seed: (_) async { expect(count, 512); styleCount++; },
+    );
+    expect(styleCount, 1);
+  });
+  test('iOS native glyph failure prevents later inserts', () async {
+    var count = 0;
+    await expectLater(seedLocalOfflineStyle(
+      styleUrl: style.uri.toString(), bundledGlyphSeeds: make(),
+      seedGlyph: (_, __) async { count++; throw StateError('Native seed failed'); },
+      seed: (_) async => fail('No style insertion'),
+    ), throwsStateError);
+    expect(count, 1);
+  });
+
 }
