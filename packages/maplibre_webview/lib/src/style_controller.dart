@@ -89,12 +89,34 @@ class StyleControllerWebView extends StyleController {
   }
 
   @override
+  Future<void> updateLayer(String id, StyleLayer layer) async {
+    await webViewController.callAsyncJavaScript(
+      functionBody: '''
+      const layerId = "${id.replaceAll('"', '\\"')}";
+      if (!window.map.getLayer(layerId)) {
+        throw new Error(`Layer "${id.replaceAll('"', '\\"')}" does not exist.`);
+      }
+      const paint = ${jsonEncode(layer.paint)};
+      for (const key in paint) {
+        window.map.setPaintProperty(layerId, key, paint[key]);
+      }
+      const layout = ${jsonEncode(layer.layout)};
+      for (const key in layout) {
+        window.map.setLayoutProperty(layerId, key, layout[key]);
+      }
+      ${layer.filter != null ? 'window.map.setFilter(layerId, ${jsonEncode(layer.filter)});' : ''}
+      ${layer is StyleLayerWithSource && layer.sourceLayerId != null ? 'window.map.setLayerSourceLayer(layerId, "${layer.sourceLayerId}");' : ''}
+''',
+    );
+  }
+
+  @override
   Future<void> addSource(Source source) async {
     await webViewController.callAsyncJavaScript(
       functionBody:
           '''
-      if (window.map.getSource("${source.id}")) {
-        throw new Error('A Source with the id "${source.id}" already exists in the map style.');
+      if (window.map.getSource("${source.id.replaceAll('"', '\\"')}")) {
+        throw new Error('A Source with the id "${source.id.replaceAll('"', '\\"')}" already exists in the map style.');
       }
       let dataVal = ${source is GeoJsonSource ? jsonEncode(source.data) : 'null'};
       if (typeof dataVal === 'string') {
@@ -108,6 +130,7 @@ class StyleControllerWebView extends StyleController {
             GeoJsonSource() => '''
             type: 'geojson',
             data: dataVal,
+            ${source.lineMetrics ? 'lineMetrics: true,' : ''}
           ''',
             RasterSource() => '''
             type: 'raster',
@@ -150,7 +173,7 @@ class StyleControllerWebView extends StyleController {
             _ => throw UnsupportedError('Unsupported source type: ${source.runtimeType}'),
           }}
       };
-      window.map.addSource("${source.id}", sourceObj);
+      window.map.addSource("${source.id.replaceAll('"', '\\"')}", sourceObj);
 ''',
     );
     // it might take some time until, e.g. the TileJSON is loaded.
@@ -243,17 +266,21 @@ class StyleControllerWebView extends StyleController {
     required String id,
     required String data,
   }) async {
-    final dataBytes = data.codeUnits;
-    final idBytes = id.codeUnits;
-    final bytes = ByteData(1 + 1 + idBytes.length + dataBytes.length);
-    bytes.setUint8(0, actionUpdateGeoJson);
-    bytes.setUint8(1, idBytes.length);
-    for (var i = 0; i < idBytes.length; i++) {
-      bytes.setUint8(2 + i, idBytes[i]);
-    }
-    for (var i = 0; i < dataBytes.length; i++) {
-      bytes.setUint8(2 + idBytes.length + i, dataBytes[i]);
-    }
-    webSocket.sendBytes(bytes);
+    await webViewController.callAsyncJavaScript(
+      functionBody: '''
+      const source = window.map.getSource("${id.replaceAll('"', '\\"')}");
+      if (!source) {
+        throw new Error('Source with id "${id.replaceAll('"', '\\"')}" does not exist.');
+      }
+      let payload = ${jsonEncode(data)};
+      if (typeof payload === 'string') {
+        const trimmed = payload.trim();
+        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+          payload = JSON.parse(trimmed);
+        }
+      }
+      source.setData(payload);
+''',
+    );
   }
 }

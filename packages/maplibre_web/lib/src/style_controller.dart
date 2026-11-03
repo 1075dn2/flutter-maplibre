@@ -193,6 +193,29 @@ class StyleControllerWeb extends StyleController {
   }
 
   @override
+  Future<void> updateLayer(String id, StyleLayer layer) async {
+    if (_map.getLayer(id) == null) {
+      throw Exception('Layer with id "$id" does not exist in the map style.');
+    }
+    // Update layout properties
+    for (final entry in layer.layout.entries) {
+      _map.setLayoutProperty(id, entry.key, entry.value);
+    }
+    // Update paint properties
+    for (final entry in layer.paint.entries) {
+      _map.setPaintProperty(id, entry.key, entry.value);
+    }
+    // Update filter
+    if (layer.filter case final filter?) {
+      _map.setFilter(id, filter);
+    }
+    // Update source layer
+    if (layer is StyleLayerWithSource && layer.sourceLayerId case final sourceLayerId?) {
+      _map.setLayerSourceLayer(id, sourceLayerId);
+    }
+  }
+
+  @override
   Future<void> addSource(Source source) async {
     if (_map.getSource(source.id) != null) {
       throw Exception(
@@ -209,7 +232,11 @@ class StyleControllerWeb extends StyleController {
         }
         _map.addSource(
           source.id,
-          interop.SourceSpecification.geoJson(type: 'geojson', data: data),
+          interop.SourceSpecification.geoJson(
+            type: 'geojson',
+            data: data,
+            lineMetrics: source.lineMetrics,
+          ),
         );
       case RasterDemSource():
         _map.addSource(

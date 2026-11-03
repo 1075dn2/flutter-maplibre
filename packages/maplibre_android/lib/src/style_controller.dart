@@ -141,6 +141,113 @@ class StyleControllerAndroid extends StyleController {
   });
 
   @override
+  Future<void> updateLayer(String id, StyleLayer layer) async => using((arena) {
+    final jId = id.toJString()..releasedBy(arena);
+    if (_jStyle.getLayer(jId) == null) {
+      throw Exception('Layer with id "$id" does not exist in the map style.');
+    }
+
+    final jni.Layer jLayer = switch (layer) {
+      FillStyleLayer() => _jStyle.getLayerAs<jni.FillLayer>(
+        jId,
+        T: jni.FillLayer.type,
+      )!,
+      CircleStyleLayer() => _jStyle.getLayerAs<jni.CircleLayer>(
+        jId,
+        T: jni.CircleLayer.type,
+      )!,
+      FillExtrusionStyleLayer() => _jStyle.getLayerAs<jni.FillExtrusionLayer>(
+        jId,
+        T: jni.FillExtrusionLayer.type,
+      )!,
+      HeatmapStyleLayer() => _jStyle.getLayerAs<jni.HeatmapLayer>(
+        jId,
+        T: jni.HeatmapLayer.type,
+      )!,
+      HillshadeStyleLayer() => _jStyle.getLayerAs<jni.HillshadeLayer>(
+        jId,
+        T: jni.HillshadeLayer.type,
+      )!,
+      LineStyleLayer() => _jStyle.getLayerAs<jni.LineLayer>(
+        jId,
+        T: jni.LineLayer.type,
+      )!,
+      RasterStyleLayer() => _jStyle.getLayerAs<jni.RasterLayer>(
+        jId,
+        T: jni.RasterLayer.type,
+      )!,
+      SymbolStyleLayer() => _jStyle.getLayerAs<jni.SymbolLayer>(
+        jId,
+        T: jni.SymbolLayer.type,
+      )!,
+      BackgroundStyleLayer() => _jStyle.getLayerAs<jni.BackgroundLayer>(
+        jId,
+        T: jni.BackgroundLayer.type,
+      )!,
+      _ => throw Exception('Unsupported layer type: ${layer.runtimeType}'),
+    };
+
+    if (layer.filter != null) {
+      final jFilterString = jsonEncode(layer.filter).toJString()
+        ..releasedBy(arena);
+      final jFilter = jni.Expression$Converter.convert$2(jFilterString)
+        ?..releasedBy(arena);
+      if (jLayer is jni.LineLayer ||
+          jLayer is jni.FillLayer ||
+          jLayer is jni.CircleLayer ||
+          jLayer is jni.FillExtrusionLayer ||
+          jLayer is jni.HeatmapLayer ||
+          jLayer is jni.SymbolLayer) {
+        (jLayer as dynamic).setFilter(jFilter!);
+      }
+    }
+
+    if (layer is StyleLayerWithSource && layer.sourceLayerId != null) {
+      final sourceLayerId = layer.sourceLayerId!;
+      if (jLayer is jni.LineLayer ||
+          jLayer is jni.FillLayer ||
+          jLayer is jni.CircleLayer ||
+          jLayer is jni.FillExtrusionLayer ||
+          jLayer is jni.HeatmapLayer ||
+          jLayer is jni.SymbolLayer ||
+          jLayer is jni.RasterLayer) {
+        (jLayer as dynamic).setSourceLayer(
+          sourceLayerId.toJString()..releasedBy(arena),
+        );
+      }
+    }
+
+    final convertedLayout = layer.layout.map((key, value) {
+      final actual = value is Color ? value.toHexString() : value;
+      return MapEntry(key, actual);
+    });
+    final convertedPaint = layer.paint.map((key, value) {
+      final actual = value is Color ? value.toHexString() : value;
+      return MapEntry(key, actual);
+    });
+    final props = JArray(
+      jni.PropertyValue.nullableType(JObject.nullableType),
+      convertedLayout.length + convertedPaint.length,
+    )..releasedBy(arena);
+    var index = 0;
+    for (final entry in convertedPaint.entries) {
+      props[index++] = jni.PaintPropertyValue(
+        entry.key.toJString()..releasedBy(arena),
+        entry.value.toJObject()..releasedBy(arena),
+        T: JObject.type,
+      )..releasedBy(arena);
+    }
+    for (final entry in convertedLayout.entries) {
+      props[index++] = jni.LayoutPropertyValue(
+        entry.key.toJString()..releasedBy(arena),
+        entry.value.toJObject()..releasedBy(arena),
+        T: JObject.type,
+      )..releasedBy(arena);
+    }
+    jLayer.setProperties(props);
+  });
+
+  @override
   Future<void> addSource(Source source) async => using((arena) {
     final jId = source.id.toJString()..releasedBy(arena);
     final prevSource = _jStyle.getSource(jId);
@@ -153,9 +260,12 @@ class StyleControllerAndroid extends StyleController {
     final jni.Source jSource;
     switch (source) {
       case GeoJsonSource():
-        final jOptions = jni.GeoJsonOptions()..releasedBy(arena);
+        final jOptions = source.lineMetrics
+            ? jni.GeoJsonOptions().withLineMetrics(true)
+            : jni.GeoJsonOptions();
+        jOptions.releasedBy(arena);
         final jData = source.data.toJString()..releasedBy(arena);
-        if (source.data.startsWith('{')) {
+        if (source.data.trimLeft().startsWith('{')) {
           jSource = jni.GeoJsonSource.new$4(jId, jData, jOptions);
         } else {
           final jUri = jni.URI.create(jData)!..releasedBy(arena);
@@ -232,17 +342,18 @@ class StyleControllerAndroid extends StyleController {
       _jStyle.removeSource(id.toJString());
 
   @override
-  Future<void> addImage(String id, Uint8List bytes) async => using((arena) {
-    final jId = id.toJString()..releasedBy(arena);
-    final jBitmap = jni.BitmapFactory.decodeByteArray(
-      JByteArray.from(bytes)..releasedBy(arena),
-      0,
-      bytes.length,
-    );
-    if (jBitmap == null) return;
-    jBitmap.releasedBy(arena);
-    _jStyle.addImage(jId, jBitmap);
-  });
+  Future<void> addImage(String id, Uint8List bytes, [bool sdf = false]) async =>
+      using((arena) {
+        final jId = id.toJString()..releasedBy(arena);
+        final jBitmap = jni.BitmapFactory.decodeByteArray(
+          JByteArray.from(bytes)..releasedBy(arena),
+          0,
+          bytes.length,
+        );
+        if (jBitmap == null) return;
+        jBitmap.releasedBy(arena);
+        _jStyle.addImage$4(jId, jBitmap, sdf);
+      });
 
   @override
   Future<void> removeImage(String id) async =>

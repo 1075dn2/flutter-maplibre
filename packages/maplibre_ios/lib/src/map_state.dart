@@ -19,6 +19,9 @@ final class MapLibreMapStateIos extends MapLibreMapState {
   bool _pendingStyleLoaded = true;
 
   @override
+  int get viewId => _viewId;
+
+  @override
   StyleControllerIos? style;
 
   @override

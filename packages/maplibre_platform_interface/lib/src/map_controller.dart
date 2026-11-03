@@ -25,6 +25,9 @@ abstract interface class MapController {
   /// Get the [MapOptions] from [MapLibreMap.options].
   MapOptions get options;
 
+  /// Get the view ID of the platform view.
+  int get viewId;
+
   /// Get the [StyleController] for the map. It returns null null if
   /// accessed before [MapLibreMap.onStyleLoaded] has been called.
   StyleController? get style;

@@ -14,6 +14,7 @@ final class GeoJsonSource extends Source {
     required super.id,
     required this.data,
     this.maxZoom = 18,
+    this.lineMetrics = false,
     this.attribution,
   });
 
@@ -25,6 +26,11 @@ final class GeoJsonSource extends Source {
   ///
   /// Defaults to 18.
   final double maxZoom;
+
+  /// If true, the source will include lineMetrics for line drawing.
+  ///
+  /// This is required for some dashed-line styles and line progress metrics.
+  final bool lineMetrics;
 
   /// Contains an attribution to be displayed when the map is shown to a user.
   final String? attribution;

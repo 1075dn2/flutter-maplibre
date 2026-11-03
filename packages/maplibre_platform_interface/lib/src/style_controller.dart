@@ -44,6 +44,10 @@ abstract class StyleController {
     int? atIndex,
   });
 
+  /// Update an existing layer with the given [id] to the new [layer].
+  /// The layer must already exist in the map style.
+  Future<void> updateLayer(String id, StyleLayer layer);
+
   /// Update the data of a GeoJSON source.
   Future<void> updateGeoJsonSource({required String id, required String data});
 
@@ -64,7 +68,7 @@ abstract class StyleController {
   List<String> getLayerIds();
 
   /// Add an image to the map.
-  Future<void> addImage(String id, Uint8List bytes);
+  Future<void> addImage(String id, Uint8List bytes, [bool sdf = false]);
 
   /// Add multiple images to the map where the key is the image ID and the
   /// value is the image bytes.

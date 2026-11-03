@@ -33,6 +33,9 @@ final class MapLibreMapStateAndroid extends MapLibreMapState
   @override
   StyleControllerAndroid? style;
 
+  @override
+  int get viewId => _viewId;
+
   jni.FrameLayout get _platformView => Registry.platformViews[_viewId]!;
 
   jni.Projection get _jProjection =>

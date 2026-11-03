@@ -7,9 +7,18 @@ class StyleControllerIos extends StyleController {
   final MLNStyle _ffiStyle;
 
   @override
-  Future<void> addImage(String id, Uint8List bytes) async {
+  Future<void> addImage(String id, Uint8List bytes, [bool sdf = false]) async {
     final image = UIImage.imageWithData(bytes.toNSData());
     if (image == null) return;
+    if (sdf) {
+      _ffiStyle.setImage(
+        image.imageWithRenderingMode(
+          UIImageRenderingMode.UIImageRenderingModeAlwaysTemplate,
+        ),
+        forName: id.toNSString(),
+      );
+      return;
+    }
     _ffiStyle.setImage(image, forName: id.toNSString());
   }
 
@@ -121,6 +130,38 @@ class StyleControllerIos extends StyleController {
   }
 
   @override
+  Future<void> updateLayer(String id, StyleLayer layer) async {
+    final ffiId = id.toNSString();
+    final existingLayer = _ffiStyle.layerWithIdentifier(ffiId);
+    if (existingLayer == null) {
+      throw Exception('Layer with id "$id" does not exist in the map style.');
+    }
+    // Update properties
+    existingLayer.setProperties(layer.paint);
+    existingLayer.setProperties(layer.layout);
+    if (layer case StyleLayerWithSource()) {
+      if (layer.sourceLayerId case final sourceLayerId?) {
+        final ffiVectorLayer = MLNVectorStyleLayer.as(existingLayer);
+        if (!MLNVectorStyleLayer.isA(existingLayer)) {
+          throw Exception(
+            'sourceLayerId is only applicable for vector style layers.',
+          );
+        }
+        ffiVectorLayer.sourceLayerIdentifier = sourceLayerId.toNSString();
+      }
+      if (layer.filter case final filter?) {
+        if (!MLNVectorStyleLayer.isA(existingLayer)) {
+          throw Exception('filter is only applicable for vector style layers.');
+        }
+        final expression = jsonEncode(filter).toNSString();
+        final ffiPredicate = Helpers.parsePredicateWithRaw(expression);
+        final ffiVectorLayer = MLNVectorStyleLayer.as(existingLayer);
+        ffiVectorLayer.predicate = ffiPredicate;
+      }
+    }
+  }
+
+  @override
   Future<void> addSource(Source source) async {
     final ffiId = source.id.toNSString();
     final prevSource = _ffiStyle.sourceWithIdentifier(ffiId);
@@ -133,21 +174,24 @@ class StyleControllerIos extends StyleController {
     final MLNSource ffiSource;
     switch (source) {
       case GeoJsonSource():
+        final options = source.lineMetrics
+            ? ({'lineMetrics': true}.toNSObject() as NSDictionary)
+            : NSDictionary.new$();
         final shapeSource = MLNShapeSource.new$();
-        if (source.data.startsWith('{')) {
+        if (source.data.trimLeft().startsWith('{')) {
           shapeSource.initWithIdentifier$3(
             ffiId,
             shape: MLNShape.shapeWithData(
               source.data.toNSDataUTF8()!,
               encoding: nsUTF8StringEncoding,
             ),
-            options: NSDictionary.new$(),
+            options: options,
           );
         } else {
           shapeSource.initWithIdentifier$1(
             ffiId,
             URL: source.data.toNSURL()!,
-            options: NSDictionary.new$(),
+            options: options,
           );
         }
         ffiSource = shapeSource;
