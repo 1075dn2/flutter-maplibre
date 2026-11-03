@@ -236,6 +236,7 @@ class StyleControllerWeb extends StyleController {
             type: 'geojson',
             data: data,
             lineMetrics: source.lineMetrics,
+            tolerance: source.tolerance,
           ),
         );
       case RasterDemSource():

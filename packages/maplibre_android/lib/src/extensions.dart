@@ -1,7 +1,7 @@
-import 'dart:convert';
 import 'package:flutter/rendering.dart';
 import 'package:jni/jni.dart';
 import 'package:maplibre_android/src/jni.g.dart' as jni;
+import 'package:maplibre_android/src/offline_metadata.dart';
 import 'package:maplibre_platform_interface/maplibre_platform_interface.dart';
 
 /// Extension methods for the [Geographic] class. Not exported publicly.
@@ -70,9 +70,7 @@ extension OfflineRegionExt on jni.OfflineRegion {
   OfflineRegion toOfflineRegion() => using((arena) {
     final jDefinition = getDefinition()..releasedBy(arena);
     final jMetadata = getMetadata()..releasedBy(arena);
-    final metadataBytes = jMetadata.toList();
-    final metadataJson = utf8.decode(metadataBytes);
-    final metadata = jsonDecode(metadataJson) as Map<String, Object?>;
+    final metadata = decodeOfflineMetadata(jMetadata.toList());
 
     return OfflineRegion(
       id: getId(),

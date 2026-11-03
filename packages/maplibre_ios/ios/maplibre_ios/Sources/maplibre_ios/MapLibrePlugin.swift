@@ -4,6 +4,9 @@ import UIKit
 
 public class MapLibrePlugin: NSObject, FlutterPlugin {
     public static func register(with registrar: FlutterPluginRegistrar) {
+        #if MAPLIBRE_EXPERIMENTAL_SCOPED_HEADERS
+        ScopedRequestNetwork.installIfConfigured()
+        #endif
         let channel = FlutterMethodChannel(
             name: "maplibre_ios", binaryMessenger: registrar.messenger()
         )

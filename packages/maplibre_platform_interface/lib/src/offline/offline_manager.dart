@@ -26,8 +26,23 @@ abstract interface class OfflineManager {
   /// Retrieve given region in the offline database.
   Future<OfflineRegion> getOfflineRegion({required int regionId});
 
-  /// Sets the maximum number of tiles that may be downloaded and stored on
-  /// the current device. By default, the limit is set to 6,000.
+  /// Queries a fresh native snapshot, including after an application restart.
+  /// An unknown region or failed query throws; neither implies completion.
+  Future<OfflineRegionStatus> getOfflineRegionStatus({required int regionId});
+
+  /// Suspends a region and confirms that the native SDK reports it inactive.
+  /// Already queued network requests may finish. Downloaded resources remain.
+  /// Callers must verify their own metadata/ownership before calling this API.
+  Future<void> suspendOfflineRegion({required int regionId});
+
+  /// Suspends, then removes an existing region from the native database.
+  /// This is separate from stream cancellation, which never deletes a region.
+  /// Callers must verify ownership first. Unknown regions and failures throw.
+  Future<void> deleteOfflineRegion({required int regionId});
+
+  /// Sets the maximum number of Mapbox tiles that may be downloaded and stored on
+  /// the current device. This does not bound arbitrary non-Mapbox providers.
+  /// By default, the limit is set to 6,000.
   void setOfflineTileCountLimit({required int amount});
 
   /// Set the maximum size of the ambient cache in bytes.
@@ -56,7 +71,13 @@ abstract interface class OfflineManager {
   /// Only available on Android.
   void runPackDatabaseAutomatically({required bool enabled});
 
-  /// Downloads a map region.
+  /// Downloads a map region when the returned stream is listened to.
+  ///
+  /// Awaiting the subscription's cancellation suspends the native download and
+  /// confirms inactivity, even when canceled before region creation completes.
+  /// It does not delete partial or completed regions. Cancellation failures are
+  /// reported through the returned cancellation future, not treated as success.
+  /// Applications should await cancellation before disposing this manager.
   Stream<DownloadProgress> downloadRegion({
     required String mapStyleUrl,
     required LngLatBounds bounds,
@@ -64,5 +85,6 @@ abstract interface class OfflineManager {
     required double maxZoom,
     required double pixelDensity,
     Map<String, Object?> metadata = const {},
+    BundledGlyphSeeds? bundledGlyphSeeds,
   });
 }
